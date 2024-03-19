@@ -9,17 +9,17 @@ import (
 )
 
 type Users struct {
-	Db *postgresdb.PgRepository
+	*postgresdb.PgRepository
 }
 
 func (a *Users) CreateUser(ctx context.Context, u model.User) error {
-	_, err := a.Db.Exec(ctx, "INSERT INTO users(name, age) VALUES ($1, $2)", u.Username, u.Age)
+	_, err := a.PgRepository.Exec(ctx, "INSERT INTO users(name, age) VALUES ($1, $2)", u.Username, u.Age)
 
 	return err
 }
 
 func (a *Users) GatAll(ctx context.Context) ([]model.User, error) {
-	rows, err := a.Db.Query(ctx, "SELECT name, age FROM users")
+	rows, err := a.PgRepository.Query(ctx, "SELECT name, age FROM users")
 	if err != nil {
 		return nil, err
 	}

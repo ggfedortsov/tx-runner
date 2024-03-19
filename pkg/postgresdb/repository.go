@@ -10,10 +10,15 @@ import (
 
 type PgRepository struct {
 	*pgxpool.Pool
+
+	opts pgx.TxOptions
 }
 
-func NewRepository(p *pgxpool.Pool) *PgRepository {
-	return &PgRepository{Pool: p}
+func NewRepository(p *pgxpool.Pool, opts pgx.TxOptions) *PgRepository {
+	return &PgRepository{
+		Pool: p,
+		opts: opts,
+	}
 }
 
 func (r *PgRepository) Query(ctx context.Context, sql string, args ...any) (pgx.Rows, error) {
@@ -38,4 +43,16 @@ func (r *PgRepository) Exec(ctx context.Context, sql string, args ...any) (pgcon
 	}
 
 	return r.Pool.Exec(ctx, sql, args...)
+}
+
+func (r *PgRepository) RunInTx(ctx context.Context, txFunc func(ctx context.Context) error) error {
+	if tx := txFromContext(ctx); tx != nil {
+		return pgx.BeginTxFunc(ctx, tx.Conn(), pgx.TxOptions{}, func(tx pgx.Tx) error {
+			return txFunc(withTx(ctx, tx))
+		})
+	}
+
+	return pgx.BeginTxFunc(ctx, r.Pool, r.opts, func(tx pgx.Tx) error {
+		return txFunc(withTx(ctx, tx))
+	})
 }

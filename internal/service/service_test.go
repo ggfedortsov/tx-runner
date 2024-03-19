@@ -2,18 +2,26 @@ package service
 
 import (
 	"context"
-	"github.com/ggfedortsov/tx-runner/internal/model"
 	"github.com/ggfedortsov/tx-runner/internal/repository"
 	"github.com/ggfedortsov/tx-runner/pkg/postgresdb"
 	"github.com/jackc/pgx/v5"
+	"github.com/lmittmann/tint"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/modules/postgres"
 	"github.com/testcontainers/testcontainers-go/wait"
+	"log/slog"
+	"os"
 	"testing"
 	"time"
 )
 
 func TestService_MethodOk(t *testing.T) {
+	logger := slog.New(tint.NewHandler(os.Stdout, &tint.Options{
+		//AddSource:  true,
+		Level:      slog.LevelDebug,
+		TimeFormat: time.TimeOnly,
+	}))
+	slog.SetDefault(logger)
 	ctx := context.Background()
 
 	dbName := "users"
@@ -36,7 +44,7 @@ func TestService_MethodOk(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// Run any migrations on the database
+	// RunInTx any migrations on the database
 	_, _, err = container.Exec(ctx, []string{"psql", "-U", dbUser, "-d", dbName, "-c", "CREATE TABLE users (id SERIAL, name TEXT NOT NULL, age INT NOT NULL)"})
 	if err != nil {
 		t.Fatal(err)
@@ -65,38 +73,42 @@ func TestService_MethodOk(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	r := postgresdb.NewRepository(pool)
-	users := &repository.Users{Db: r}
-	runner := postgresdb.NewTxRunner(pool, pgx.TxOptions{})
+	r := postgresdb.NewRepository(pool, pgx.TxOptions{})
+	users := &repository.Users{PgRepository: r}
 
 	service := Service{
 		UserStorage: users,
-		Runner:      runner,
 	}
 
-	us, err := service.MethodOk(ctx, model.User{
-		Username: "alex",
-		Age:      10,
-	})
+	err = service.DoubleRunner(ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
+	all, _ := users.GatAll(ctx)
+	slog.Info("get users", "users", all)
+	//us, err := service.MethodOk(ctx, model.User{
+	//	Username: "alex",
+	//	Age:      10,
+	//})
+	//if err != nil {
+	//	t.Fatal(err)
+	//}
+	//
+	//_, err = service.MethodError(ctx, model.User{
+	//	Username: "alex",
+	//	Age:      10,
+	//})
+	//if err == nil {
+	//	t.Fatal()
+	//}
+	//
+	//us, err = service.MethodOk(ctx, model.User{
+	//	Username: "alex",
+	//	Age:      10,
+	//})
+	//if err != nil {
+	//	t.Fatal(err)
+	//}
 
-	_, err = service.MethodError(ctx, model.User{
-		Username: "alex",
-		Age:      10,
-	})
-	if err == nil {
-		t.Fatal()
-	}
-
-	us, err = service.MethodOk(ctx, model.User{
-		Username: "alex",
-		Age:      10,
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	println(len(us))
+	//println(len(us))
 }

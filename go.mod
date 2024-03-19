@@ -6,6 +6,7 @@ require (
 	github.com/exaring/otelpgx v0.5.4
 	github.com/go-ozzo/ozzo-validation/v4 v4.3.0
 	github.com/jackc/pgx/v5 v5.5.5
+	github.com/lmittmann/tint v1.0.4
 	github.com/testcontainers/testcontainers-go v0.29.1
 	github.com/testcontainers/testcontainers-go/modules/postgres v0.29.1
 )
